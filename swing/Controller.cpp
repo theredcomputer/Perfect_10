@@ -36,6 +36,7 @@
  */
 
 #include "Controller.h"
+#include <iostream>
 
 Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::ConstraintSolver* _constrSolver, double _t) {
   mSkel = _skel;
@@ -125,6 +126,12 @@ void Controller::setDesiredDof(int _index, double _val) {
 }
 
 void Controller::computeTorques(int _currentFrame) {
+  for (int i = 0; i < mSkel->getNumDofs(); i++) {
+    dart::dynamics::DegreeOfFreedom *dof = mSkel->getDof(i);
+    std::cout << dof->getName() << " = " << dof->getPosition() << std::endl;
+  }
+  std::cout << std::endl;
+
   mCurrentFrame = _currentFrame;
   mTorques.setZero();
   if (mState == "STAND") {
