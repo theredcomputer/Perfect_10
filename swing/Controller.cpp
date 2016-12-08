@@ -105,6 +105,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::Cons
   mRightHandContact = NULL;
   mTimer = 300;
   mState = "STAND";
+
+  mVision = NULL;
 }
 
 Controller::~Controller() {

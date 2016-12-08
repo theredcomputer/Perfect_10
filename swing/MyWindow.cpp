@@ -166,8 +166,10 @@ void MyWindow::movePlatforms() {
 }
 
 void MyWindow::updateSensor() {
-  if (mInputSensor.size() == 0)
+  if (mInputSensor.size() == 0) {
     mInputSensor.resize(4 * mWinWidth * mWinHeight);
+    mController->mVision = &mInputSensor;
+  }
     
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
