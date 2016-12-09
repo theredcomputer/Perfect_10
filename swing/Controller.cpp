@@ -126,10 +126,37 @@ void Controller::setDesiredDof(int _index, double _val) {
 }
 
 void Controller::computeTorques(int _currentFrame) {
-  for (int i = 0; i < mSkel->getNumDofs(); i++) {
-    dart::dynamics::DegreeOfFreedom *dof = mSkel->getDof(i);
-    std::cout << dof->getName() << " = " << dof->getPosition() << std::endl;
-  }
+  // for (int i = 0; i < mSkel->getNumDofs(); i++) {
+  //   dart::dynamics::DegreeOfFreedom *dof = mSkel->getDof(i);
+  //   std::cout << dof->getName() << " = " << dof->getPosition() << std::endl;
+  // }
+  // std::cout << std::endl;
+
+  std::cout << "j_thigh_left_x" << " = " << mSkel->getDof("j_thigh_left_x")->getPosition() << std::endl;
+  std::cout << "j_thigh_left_y" << " = " << mSkel->getDof("j_thigh_left_y")->getPosition() << std::endl;
+  std::cout << "j_thigh_left_z" << " = " << mSkel->getDof("j_thigh_left_z")->getPosition() << std::endl;
+
+  std::cout << "j_thigh_right_x" << " = " << mSkel->getDof("j_thigh_right_x")->getPosition() << std::endl;
+  std::cout << "j_thigh_right_y" << " = " << mSkel->getDof("j_thigh_right_y")->getPosition() << std::endl;
+  std::cout << "j_thigh_right_z" << " = " << mSkel->getDof("j_thigh_right_z")->getPosition() << std::endl;
+
+  std::cout << "j_shin_left" << " = " << mSkel->getDof("j_shin_left")->getPosition() << std::endl;
+  std::cout << "j_shin_right" << " = " << mSkel->getDof("j_shin_right")->getPosition() << std::endl;
+
+  std::cout << "j_abdomen_1" << " = " << mSkel->getDof("j_abdomen_1")->getPosition() << std::endl;
+  std::cout << "j_abdomen_2" << " = " << mSkel->getDof("j_abdomen_2")->getPosition() << std::endl;
+  
+  std::cout << "j_forearm_left" << " = " << mSkel->getDof("j_forearm_left")->getPosition() << std::endl;
+  std::cout << "j_forearm_right" << " = " << mSkel->getDof("j_forearm_right")->getPosition() << std::endl;  
+
+  std::cout << "j_bicep_left_x" << " = " << mSkel->getDof("j_bicep_left_x")->getPosition() << std::endl;
+  std::cout << "j_bicep_left_y" << " = " << mSkel->getDof("j_bicep_left_y")->getPosition() << std::endl;
+  std::cout << "j_bicep_left_z" << " = " << mSkel->getDof("j_bicep_left_z")->getPosition() << std::endl;
+
+  std::cout << "j_bicep_right_x" << " = " << mSkel->getDof("j_bicep_right_x")->getPosition() << std::endl;
+  std::cout << "j_bicep_right_y" << " = " << mSkel->getDof("j_bicep_right_y")->getPosition() << std::endl;
+  std::cout << "j_bicep_right_z" << " = " << mSkel->getDof("j_bicep_right_z")->getPosition() << std::endl;
+  
   std::cout << std::endl;
 
   mCurrentFrame = _currentFrame;
