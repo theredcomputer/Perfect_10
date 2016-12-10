@@ -37,6 +37,7 @@
 
 #include "Controller.h"
 #include <iostream>
+#include <math.h>
 
 Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::ConstraintSolver* _constrSolver, double _t) {
   mSkel = _skel;
@@ -108,6 +109,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::Cons
   mState = "STAND";
 
   mVision = NULL;
+  lowestHeelPosition = 0.0;
 }
 
 Controller::~Controller() {
@@ -131,7 +133,7 @@ void Controller::computeTorques(int _currentFrame) {
   //   std::cout << dof->getName() << " = " << dof->getPosition() << std::endl;
   // }
   // std::cout << std::endl;
-
+/*
   std::cout << "j_thigh_left_x" << " = " << mSkel->getDof("j_thigh_left_x")->getPosition() << std::endl;
   std::cout << "j_thigh_left_y" << " = " << mSkel->getDof("j_thigh_left_y")->getPosition() << std::endl;
   std::cout << "j_thigh_left_z" << " = " << mSkel->getDof("j_thigh_left_z")->getPosition() << std::endl;
@@ -158,7 +160,10 @@ void Controller::computeTorques(int _currentFrame) {
   std::cout << "j_bicep_right_z" << " = " << mSkel->getDof("j_bicep_right_z")->getPosition() << std::endl;
   
   std::cout << std::endl;
+*/
 
+  //std::cout << "Height of ground: " << mWorld->
+  //std::cout << "Height of h_heel_left: " << mSkel->getBodyNode("h_heel_left")->getCOM()[1] << std::endl;
   mCurrentFrame = _currentFrame;
   mTorques.setZero();
   if (mState == "STAND") {
@@ -229,6 +234,11 @@ void Controller::stand() {
 
 void Controller::crouch() {
 
+  if (mSkel->getBodyNode("h_heel_left")->getCOM()[1] < lowestHeelPosition) {
+    lowestHeelPosition = mSkel->getBodyNode("h_heel_left")->getCOM()[1];
+    std::cout << "Lowest heel position: " << lowestHeelPosition << std::endl;
+  }
+
   // Change to crouching pose
   mDesiredDofs = mDefaultPose;
   mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 0.7;
@@ -257,6 +267,7 @@ void Controller::crouch() {
 }
 
 void Controller::jump() {
+
   // Change to leaping pose
   mDesiredDofs = mDefaultPose;
   mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 0.2;
@@ -358,6 +369,25 @@ void Controller::swing() {
   mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = 0.4;
   
   stablePD();
+
+
+  // Compute the landing position and how time to land from release
+  double y_0, v, theta, g, d, x_land, t;
+  Eigen::Vector3d v_com;
+
+  y_0 = mSkel->getBodyNode("h_pelvis")->getCOM()[1] + lowestHeelPosition;
+  //y_0 = mSkel->getCOM()[1] + lowestHeelPosition;
+  v_com = mSkel->getCOMLinearVelocity();
+  v = sqrt(pow(v_com[0],2) + pow(v_com[1],2));
+  theta = atan(v_com[1] / v_com[0]);
+  std::cout << "theta: " << theta << std::endl;
+  g = mSkel->getGravity()[1];
+  d = (v * cos(theta) / g ) * (v * sin(theta) + sqrt(pow(v * sin(theta), 2) + 2 * g * y_0));
+  x_land = mSkel->getCOM()[0] + d;
+  t = x_land / (v * cos(theta));
+  std::cout << "x_land: " << x_land << std::endl;
+  std::cout << "t: " << t << std::endl;
+  
 
   // TODO: Figure out the condition to release the bar
   if (false) {

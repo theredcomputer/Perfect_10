@@ -62,6 +62,7 @@ public:
   Eigen::MatrixXd getKd();
   
   std::vector<unsigned char>* mVision;
+  double lowestHeelPosition;
 
 protected:
   void stand();
