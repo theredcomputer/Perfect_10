@@ -109,6 +109,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::Cons
   mState = "STAND";
 
   mVision = NULL;
+  mVisionProcessor = new Controller::Vision(640, 480);
   lowestHeelPosition = 0.0;
 }
 
@@ -128,6 +129,9 @@ void Controller::setDesiredDof(int _index, double _val) {
 }
 
 void Controller::computeTorques(int _currentFrame) {
+  // Process the vision sensor
+  mVisionProcessor->processImage(mVision);
+
   // for (int i = 0; i < mSkel->getNumDofs(); i++) {
   //   dart::dynamics::DegreeOfFreedom *dof = mSkel->getDof(i);
   //   std::cout << dof->getName() << " = " << dof->getPosition() << std::endl;
@@ -514,3 +518,33 @@ Eigen::MatrixXd Controller::getKd() {
   return mKd;
 }
 
+void Controller::Vision::processImage(std::vector<unsigned char>* input) {
+  if (input == NULL)
+    return;
+
+  // std::cout << "Total number of pixels: " << input->size() << std::endl;
+  // std::cout << "Dimensions " << mWidth << " x " << mHeight << std::endl;
+
+  int red = 92;
+  int green = 82;
+  int blue = 92;
+
+  int highestRow = -1;
+
+  for (int y = 0; y < mHeight; y++) {
+    for (int x = 0; x < mWidth; x++) {
+      int index = (y*mWidth*4) + x*4;
+      int r = input->at(index);
+      int g = input->at(index + 1);
+      int b = input->at(index + 2);
+      int a = input->at(index + 3);
+
+      if (red == r && green == g && blue == b) {
+        highestRow = y;
+        break;
+      }
+    }
+  }
+
+  std::cout << "Found platform at highest row: " << (mHeight - highestRow) << std::endl;
+}

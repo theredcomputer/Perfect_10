@@ -46,6 +46,9 @@
 
 
 class Controller {
+private:
+  class Vision;
+
 public:
   Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::ConstraintSolver* _constrSolver,
              double _t);
@@ -62,6 +65,7 @@ public:
   Eigen::MatrixXd getKd();
   
   std::vector<unsigned char>* mVision;
+  Vision *mVisionProcessor;
   double lowestHeelPosition;
 
 protected:
@@ -100,6 +104,22 @@ protected:
   dart::dynamics::BodyNodePtr mLeftHandContact;
   dart::dynamics::BodyNodePtr mRightHandContact;
   int mCurrentFrame;
+
+private:
+  class Vision {
+    public:
+      Vision(int width, int height)
+        : mWidth(width), mHeight(height) 
+      {
+
+      }
+
+      void processImage(std::vector<unsigned char>* vision);
+
+    private:
+      int mWidth;
+      int mHeight;
+  };
 };
 
 #endif  // APPS_SWING_CONTROLLER_H_
