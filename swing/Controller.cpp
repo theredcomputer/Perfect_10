@@ -38,6 +38,7 @@
 #include "Controller.h"
 #include <iostream>
 #include <math.h>
+#include <stdlib.h>
 
 Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::ConstraintSolver* _constrSolver, double _t) {
   mSkel = _skel;
@@ -111,8 +112,18 @@ Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::Cons
   mVision = NULL;
   mVisionProcessor = new Controller::Vision(640, 480);
   lowestHeelPosition = 0.0;
+  
+  mMinX = 0.835;
+  mMaxX = 0.845;
+  mPrevSwingState = 1;
+  mSwingState = 2;
+  mXPos = 0.0;
+  mPrevXPos = 0.0;
+  mXThreshold = 0.01;
+  xLandMax = 0.0;
+  mCounter = 0;
 }
-
+  
 Controller::~Controller() {
 }
 
@@ -182,6 +193,8 @@ void Controller::computeTorques(int _currentFrame) {
     grab();
   } else if (mState == "RELEASE") {
     release();
+  } else if (mState == "PRESWING") {
+    preSwing();
   } else if (mState == "SWING") {
     swing();
   } else {
@@ -356,14 +369,16 @@ void Controller::grab() {
   mTimer--;
 
   if (mTimer == 0) {
-    mState = "SWING";
-    std::cout << mCurrentFrame << ": " << "GRAB -> SWING" << std::endl;
+    mState = "PRESWING";
+    mTimer = 500;
+    std::cout << mCurrentFrame << ": " << "GRAB -> PRESWING" << std::endl;
+    preSwing();
   }
 }  
 
-void Controller::swing() {
-  // TODO: Need a better controller to increase the speed
-  // and land at the right moment
+
+void Controller::preSwing() {
+  // Need to get enough momentum to being swinging
   mDesiredDofs = mDefaultPose;
   mDesiredDofs[mSkel->getDof("j_bicep_left_z")->getIndexInSkeleton()] = 1;
   mDesiredDofs[mSkel->getDof("j_bicep_left_y")->getIndexInSkeleton()] = -2.6;
@@ -372,26 +387,60 @@ void Controller::swing() {
   mDesiredDofs[mSkel->getDof("j_forearm_left")->getIndexInSkeleton()] = 0.4;
   mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = 0.4;
   
+  mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 2;
+  mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = 2;
+  
+  stablePD();
+  mTimer--;
+
+  if (mTimer == 0) {
+    mState = "SWING";
+    std::cout << mCurrentFrame << ": " << "PRESWING -> SWING" << std::endl;
+    preSwing();
+  }
+
+
+}
+
+void Controller::swing() {
+  // TODO: Need a better controller to increase the speed
+  // and land at the right moment 
+  mCounter++; 
+  checkSwingState();
+  setSwingPose();
   stablePD();
 
-
-  // Compute the landing position and how time to land from release
-  double y_0, v, theta, g, d, x_land, t;
-  Eigen::Vector3d v_com;
-
-  y_0 = mSkel->getBodyNode("h_pelvis")->getCOM()[1] + lowestHeelPosition;
-  //y_0 = mSkel->getCOM()[1] + lowestHeelPosition;
-  v_com = mSkel->getCOMLinearVelocity();
-  v = sqrt(pow(v_com[0],2) + pow(v_com[1],2));
-  theta = atan(v_com[1] / v_com[0]);
-  std::cout << "theta: " << theta << std::endl;
-  g = mSkel->getGravity()[1];
-  d = (v * cos(theta) / g ) * (v * sin(theta) + sqrt(pow(v * sin(theta), 2) + 2 * g * y_0));
-  x_land = mSkel->getCOM()[0] + d;
-  t = x_land / (v * cos(theta));
-  std::cout << "x_land: " << x_land << std::endl;
-  std::cout << "t: " << t << std::endl;
+  /*
+  // The default configuration
+  mDesiredDofs = mDefaultPose;
+  mDesiredDofs[mSkel->getDof("j_bicep_left_z")->getIndexInSkeleton()] = 1;
+  mDesiredDofs[mSkel->getDof("j_bicep_left_y")->getIndexInSkeleton()] = -2.6;
+  mDesiredDofs[mSkel->getDof("j_bicep_right_z")->getIndexInSkeleton()] = 1;
+  mDesiredDofs[mSkel->getDof("j_bicep_right_y")->getIndexInSkeleton()] = 2.6;
+  mDesiredDofs[mSkel->getDof("j_forearm_left")->getIndexInSkeleton()] = 0.4;
+  mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = 0.4;
   
+  //mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 2;
+  //mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = 2;
+  
+  stablePD();
+  */
+  
+  double x_land, t;
+  computeLandingData(&x_land, &t);
+  if (x_land > xLandMax && t < 2) {
+    xLandMax = x_land;
+    std::cout << mCounter << " xLandMax: " << xLandMax << " t: " << t << std::endl;
+  }
+  //std::cout << "mSwingState: " << mSwingState << std::endl;
+  //std::cout << "x_land: " << x_land << " t: " << t << std::endl;
+  //std::cout << "pelvis_pos: " << mSkel->getBodyNode("h_pelvis")->getCOM()[0] << std::endl;  
+  //std::cout << "mMinX: " << mMinX << " mMaxX: " << mMaxX << " mSwingState: " << mSwingState << std::endl;
+
+  double LA_x = mSkel->getCOMLinearAcceleration()[0];
+  double LA_y = mSkel->getCOMLinearAcceleration()[1];
+  double LA = sqrt(pow(LA_x,2) + pow(LA_y,2)); 
+  //std::cout << LA_y << " " << LA_x << " LA: " << LA << std::endl; 
 
   // TODO: Figure out the condition to release the bar
   if (false) {
@@ -498,6 +547,134 @@ void Controller::rightHandRelease() {
   mRightHandHold = NULL;
 }
 
+
+void Controller::checkSwingState() {
+    
+  //mPrevXPos = mXPos;
+  mXPos = mSkel->getBodyNode("h_toe_left")->getCOM()[0];
+  //mXVel = mXPos - mPrevXPos;
+  
+  switch (mSwingState) {
+  //* // Basic swing
+  case 1: // Slowing down on the right side
+    if (mSkel->getCOMLinearAcceleration()[1] < 0 && mXPos < 0.835)
+      mSwingState = 2;
+    break;
+  case 2: // Slowing down on the left side
+    if (mSkel->getCOMLinearAcceleration()[1] < 0 && mXPos > 0.835)
+      mSwingState = 1;
+    break;
+  //*/
+  /* // Tap swing (hollow, arch, hollow through back)
+  case 1: // Hollow to half way down
+    if (mSkel->getCOMLinearAcceleration()[1] > 0 && mSkel->getCOMLinearVelocity()[0] > 0 && mXPos < 0.835)
+      mSwingState = 2;
+    break;
+  case 2: // Arch the second half down
+    if (mXPos > 0.835)
+      mSwingState = 1;
+    break;
+  //*/
+  default:
+    std::cout << "Invalid state" << std::endl;
+    break;
+  }
+}
+
+void Controller::setSwingPose() {
+
+  switch (mSwingState) {
+  //* // Basic swing
+  case 1:
+    mDesiredDofs = mDefaultPose;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_z")->getIndexInSkeleton()] = 1;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_y")->getIndexInSkeleton()] = -2.6;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_z")->getIndexInSkeleton()] = 1;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_y")->getIndexInSkeleton()] = 2.6;
+    mDesiredDofs[mSkel->getDof("j_forearm_left")->getIndexInSkeleton()] = 0.4;
+    mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = 0.4;
+    mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 0;
+    mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = 0;
+    mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = -1.6;
+    mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = -1.6;
+    break;
+  case 2:
+    mDesiredDofs = mDefaultPose;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_z")->getIndexInSkeleton()] = -5.5;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_y")->getIndexInSkeleton()] = -2.6;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_z")->getIndexInSkeleton()] = -5.5;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_y")->getIndexInSkeleton()] = 2.6;
+    mDesiredDofs[mSkel->getDof("j_forearm_left")->getIndexInSkeleton()] = -0.9;
+    mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = -0.9;
+    mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 1.3;
+    mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = 1.3;
+    mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = 0.1;
+    mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = 0.1;
+    break;
+  //*/
+  /* // Tap swing
+  case 1:
+    mDesiredDofs = mDefaultPose;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_z")->getIndexInSkeleton()] = 1;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_y")->getIndexInSkeleton()] = -2.6;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_z")->getIndexInSkeleton()] = 1;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_y")->getIndexInSkeleton()] = 2.6;
+    mDesiredDofs[mSkel->getDof("j_forearm_left")->getIndexInSkeleton()] = -0.1;
+    mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = -0.1;
+    mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 0.6;
+    mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = 0.6;
+    mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = 0.3;
+    mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = 0.3;
+    
+    //mDesiredDofs[mSkel->getDof("j_scapula_left")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_scapula_right")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_bicep_left_x")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_hand_left_1")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_hand_right_1")->getIndexInSkeleton()] = 0;
+    break;
+  case 2:
+    mDesiredDofs = mDefaultPose;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_z")->getIndexInSkeleton()] = 8;
+    mDesiredDofs[mSkel->getDof("j_bicep_left_y")->getIndexInSkeleton()] = -2.6;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_z")->getIndexInSkeleton()] = 8;
+    mDesiredDofs[mSkel->getDof("j_bicep_right_y")->getIndexInSkeleton()] = 2.6;
+    mDesiredDofs[mSkel->getDof("j_forearm_left")->getIndexInSkeleton()] = 2.9;
+    mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = 2.9;
+    mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = -0.6;
+    mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = -0.6;
+    mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = -0.6;
+    mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = -0.6;
+    
+    //mDesiredDofs[mSkel->getDof("j_bicep_left_x")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_scapula_left")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_scapula_right")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_hand_left_1")->getIndexInSkeleton()] = 0;
+    //mDesiredDofs[mSkel->getDof("j_hand_right_1")->getIndexInSkeleton()] = 0;
+    break;
+  //*/
+  default:
+    std::cout << "Invalid state" << std::endl;
+  }
+}
+
+
+void Controller::computeLandingData(double* x_land, double* t) {
+  // Compute the landing position and how time to land from release
+  double y_0, v, theta, g, d;
+  Eigen::Vector3d v_com;
+
+  y_0 = mSkel->getBodyNode("h_pelvis")->getCOM()[1] + lowestHeelPosition;
+  v_com = mSkel->getCOMLinearVelocity();
+  v = sqrt(pow(v_com[0],2) + pow(v_com[1],2));
+  theta = atan(v_com[1] / v_com[0]);
+  //std::cout << "theta: " << theta << std::endl;
+  g = mSkel->getGravity()[1];
+  d = (v * cos(theta) / g ) * (v * sin(theta) + sqrt(pow(v * sin(theta), 2) + 2 * g * y_0));
+  *x_land = mSkel->getCOM()[0] + d;
+  *t = *x_land / (v * cos(theta));
+}
+
+
 void Controller::setState(std::string _state) {
   mState = _state;
 }
@@ -546,5 +723,5 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
     }
   }
 
-  std::cout << "Found platform at highest row: " << (mHeight - highestRow) << std::endl;
+  //std::cout << "Found platform at highest row: " << (mHeight - highestRow) << std::endl;
 }

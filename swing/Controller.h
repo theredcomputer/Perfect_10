@@ -74,6 +74,7 @@ protected:
   void jump();
   void reach();
   void grab();
+  void preSwing();
   void swing();
   void release();
   // Basic control building blocks
@@ -86,6 +87,10 @@ protected:
   void rightHandGrab();
   void leftHandRelease();
   void rightHandRelease();
+
+  void checkSwingState();
+  void setSwingPose();
+  void computeLandingData(double* x_land, double* t);
 
   dart::dynamics::SkeletonPtr mSkel;
   dart::constraint::ConstraintSolver* mConstraintSolver;
@@ -104,6 +109,17 @@ protected:
   dart::dynamics::BodyNodePtr mLeftHandContact;
   dart::dynamics::BodyNodePtr mRightHandContact;
   int mCurrentFrame;
+
+  double mMinX;
+  double mMaxX;
+  double mNumStates;
+  unsigned int mPrevSwingState;
+  unsigned int mSwingState;
+  double mXPos;
+  double mPrevXPos;
+  double mXThreshold;
+  double xLandMax;
+  unsigned int mCounter;
 
 private:
   class Vision {
