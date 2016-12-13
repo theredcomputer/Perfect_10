@@ -39,6 +39,7 @@
 #define APPS_SWING_CONTROLLER_H_
 
 #include <vector>
+#include <deque>
 
 #include <Eigen/Dense>
 
@@ -125,7 +126,11 @@ private:
   class Vision {
     public:
       Vision(int width, int height)
-        : mWidth(width), mHeight(height) 
+        : mWidth(width)
+        , mHeight(height)
+        , mHighestRow(0)
+        , mPixelsPerFrame(0) 
+        , mLastPositions(100)
       {
 
       }
@@ -133,6 +138,11 @@ private:
       void processImage(std::vector<unsigned char>* vision);
 
     private:
+      int mHighestRow;
+      double mPixelsPerFrame;
+      int mVelocitySign;
+      std::deque<int> mLastPositions;
+
       int mWidth;
       int mHeight;
   };
