@@ -529,10 +529,9 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
   int green = 82;
   int blue = 92;
 
-  int highestRow = -1;
+  for (int y = mHeight - 1; y >= 0; y--) {
+      int x = mWidth / 2;
 
-  for (int y = 0; y < mHeight; y++) {
-    for (int x = 0; x < mWidth; x++) {
       int index = (y*mWidth*4) + x*4;
       int r = input->at(index);
       int g = input->at(index + 1);
@@ -540,11 +539,25 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
       int a = input->at(index + 3);
 
       if (red == r && green == g && blue == b) {
-        highestRow = y;
+        int prev = mHighestRow;
+        mHighestRow = (mHeight - y);
         break;
       }
-    }
   }
 
-  std::cout << "Found platform at highest row: " << (mHeight - highestRow) << std::endl;
+  // Add the position to the queue
+  if (mLastPositions.size() == 100) {
+    mLastPositions.pop_front();
+  }
+  mLastPositions.push_back(mHighestRow);
+
+  // Compute the distance travelled in the last 100 frames
+  int total_distance = 0;
+  for (int i = 0; i < mLastPositions.size() - 1; i++) {
+    total_distance += abs(mLastPositions[i+1] - mLastPositions[i]);
+  }
+  mPixelsPerFrame = total_distance / 99.0;
+  mVelocitySign = (mLastPositions[9] - mLastPositions[8]) < 0 ? -1 : 1;
+
+  std::cout << "Platform speed (pixels per frame): " << mPixelsPerFrame << std::endl;
 }
