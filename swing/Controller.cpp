@@ -706,6 +706,8 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
   int green = 82;
   int blue = 92;
 
+  int prev;
+
   for (int y = mHeight - 1; y >= 0; y--) {
       int x = mWidth / 2;
 
@@ -716,8 +718,15 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
       int a = input->at(index + 3);
 
       if (red == r && green == g && blue == b) {
-        int prev = mHighestRow;
+        prev = mHighestRow;
         mHighestRow = (mHeight - y);
+
+        if (mCloserBoundary == -1 || mHighestRow > mCloserBoundary)
+          mCloserBoundary = mHighestRow;
+
+        if (mFurtherBoundary == -1 || mHighestRow < mFurtherBoundary) 
+          mFurtherBoundary = mHighestRow;
+
         break;
       }
   }
@@ -734,7 +743,10 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
     total_distance += abs(mLastPositions[i+1] - mLastPositions[i]);
   }
   mPixelsPerFrame = total_distance / 99.0;
-  mVelocitySign = (mLastPositions[9] - mLastPositions[8]) < 0 ? -1 : 1;
+  mVelocitySign = (mLastPositions[99] - mLastPositions[98]) < 0 ? -1 : 1;
 
   std::cout << "Platform speed (pixels per frame): " << mPixelsPerFrame << std::endl;
+  std::cout << "Position: " << mHighestRow << std::endl;
+  std::cout << "Closest boundary: " << mCloserBoundary << std::endl;
+  std::cout << "Furthest boundary: " << mFurtherBoundary << std::endl;
 }
