@@ -433,7 +433,7 @@ void Controller::swing() {
     std::cout << mCounter << " xLandMax: " << xLandMax << " t: " << t << std::endl;
   }
   //std::cout << "mSwingState: " << mSwingState << std::endl;
-  //std::cout << "x_land: " << x_land << " t: " << t << std::endl;
+  std::cout << "x_land: " << x_land << " t: " << t << std::endl;
   //std::cout << "pelvis_pos: " << mSkel->getBodyNode("h_pelvis")->getCOM()[0] << std::endl;  
   //std::cout << "mMinX: " << mMinX << " mMaxX: " << mMaxX << " mSwingState: " << mSwingState << std::endl;
 
@@ -442,7 +442,11 @@ void Controller::swing() {
   double LA = sqrt(pow(LA_x,2) + pow(LA_y,2)); 
   //std::cout << LA_y << " " << LA_x << " LA: " << LA << std::endl; 
 
+  int forward = mVisionProcessor->positionAtTime(t);
+  std::cout << "platform at t: " << forward << std::endl;
+
   // TODO: Figure out the condition to release the bar
+  // if (mVisionProcessor->mVelocitySign == 1 && (forward > 110 && forward < 120) && (x_land > 0.7 && x_land < 0.8)) {
   if (false) {
     mState = "RELEASE";
     std::cout << mCurrentFrame << ": " << "SWING -> RELEASE" << std::endl;
@@ -743,26 +747,30 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
     total_distance += abs(mLastPositions[i+1] - mLastPositions[i]);
   }
   mPixelsPerFrame = total_distance / 99.0;
+  mPixelsPerSecond = mPixelsPerFrame * 1000;
   mVelocitySign = (mLastPositions[99] - mLastPositions[98]) < 0 ? -1 : 1;
 
-  std::cout << "Platform speed (pixels per frame): " << mPixelsPerFrame << std::endl;
-  std::cout << "Position: " << mHighestRow << std::endl;
+  // std::cout << "Platform speed (pixels per frame): " << mPixelsPerFrame << std::endl;
+  // std::cout << "Platform speed (pixels per second): " << mPixelsPerSecond << std::endl;
+  // std::cout << "Position: " << mHighestRow << std::endl;
   // std::cout << "Closest boundary: " << mCloserBoundary << std::endl;
   // std::cout << "Furthest boundary: " << mFurtherBoundary << std::endl;
 }
 
 int Controller::Vision::positionAtTime(int time) {
-  int position = mHighestRow + (mVelocitySign * mPixelsPerFrame * time);
+  int position = mHighestRow + (mVelocitySign * mPixelsPerSecond * time);
 
-  // Moving closer
-  if (mVelocitySign == 1 && position > mCloserBoundary) {
-    int diff = position - mCloserBoundary;
-    position -= 2*diff;
-  }
-  // Moving away
-  else if (mVelocitySign == -1 && position < mFurtherBoundary) {
-    int diff = mFurtherBoundary - position;
-    position += 2*diff;
+  while (position > mCloserBoundary || position < mFurtherBoundary) {
+    // Moving closer
+    if (position > mCloserBoundary) {
+      int diff = position - mCloserBoundary;
+      position -= 2*diff;
+    }
+    // Moving away
+    else if (position < mFurtherBoundary) {
+      int diff = mFurtherBoundary - position;
+      position += 2*diff;
+    }
   }
 
   return position;

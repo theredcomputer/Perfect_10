@@ -140,9 +140,10 @@ private:
       void processImage(std::vector<unsigned char>* vision);
       int positionAtTime(int time);
 
-    private:
+    
       int mHighestRow;
       double mPixelsPerFrame;
+      double mPixelsPerSecond;
       int mVelocitySign;
       std::deque<int> mLastPositions;
 
