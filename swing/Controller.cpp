@@ -747,6 +747,23 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
 
   std::cout << "Platform speed (pixels per frame): " << mPixelsPerFrame << std::endl;
   std::cout << "Position: " << mHighestRow << std::endl;
-  std::cout << "Closest boundary: " << mCloserBoundary << std::endl;
-  std::cout << "Furthest boundary: " << mFurtherBoundary << std::endl;
+  // std::cout << "Closest boundary: " << mCloserBoundary << std::endl;
+  // std::cout << "Furthest boundary: " << mFurtherBoundary << std::endl;
+}
+
+int Controller::Vision::positionAtTime(int time) {
+  int position = mHighestRow + (mVelocitySign * mPixelsPerFrame * time);
+
+  // Moving closer
+  if (mVelocitySign == 1 && position > mCloserBoundary) {
+    int diff = position - mCloserBoundary;
+    position -= 2*diff;
+  }
+  // Moving away
+  else if (mVelocitySign == -1 && position < mFurtherBoundary) {
+    int diff = mFurtherBoundary - position;
+    position += 2*diff;
+  }
+
+  return position;
 }
