@@ -457,7 +457,7 @@ void Controller::swing() {
   // TODO: Figure out the condition to release the bar
   // if (mVisionProcessor->mVelocitySign == 1 && (forward > 110 && forward < 120) && (x_land > 0.7 && x_land < 0.8)) {
   // if (x_land > 1.2 && t < 1.5) {
-  if ((angle > -80 && angle < -70) && skelVelocity[1] > 0) {
+  if ((angle > -80 && angle < -70) && (skelVelocity[1] > 0) && (mVisionProcessor->mVelocitySign == 1 && mVisionProcessor->mPercentage > 0.7)) {
     mState = "RELEASE";
     std::cout << mCurrentFrame << ": " << "SWING -> RELEASE" << std::endl;
   }
@@ -758,7 +758,10 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
   }
   mPixelsPerFrame = total_distance / 99.0;
   mPixelsPerSecond = mPixelsPerFrame * 1000;
-  mVelocitySign = (mLastPositions[99] - mLastPositions[98]) < 0 ? -1 : 1;
+  
+  int frameDifference = mLastPositions[99] - mLastPositions[98];
+  if (frameDifference != 0)
+    mVelocitySign = (frameDifference > 0) ? 1 : -1;
 
   // Add the position to the queue
   if (mLastSpeeds.size() == 1000) {
@@ -771,6 +774,11 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
     speedAverages += mLastSpeeds[i];
   }
   speedAverages /= mLastSpeeds.size();
+
+  // Compute the position of the platform along this path
+  double range = (mCloserBoundary - mFurtherBoundary);
+  if (range != 0)
+    mPercentage = (mHighestRow - mFurtherBoundary) / range;
 
   // std::cout << "Platform speed (pixels per frame): " << mPixelsPerFrame << std::endl;
   // std::cout << "Platform speed (pixels per second): " << mPixelsPerSecond << std::endl;
