@@ -140,6 +140,7 @@ private:
 
       void processImage(std::vector<unsigned char>* vision);
       int positionAtTime(int time);
+      bool isPrimePosition();
 
     
       int mHighestRow;

@@ -457,7 +457,7 @@ void Controller::swing() {
   // TODO: Figure out the condition to release the bar
   // if (mVisionProcessor->mVelocitySign == 1 && (forward > 110 && forward < 120) && (x_land > 0.7 && x_land < 0.8)) {
   // if (x_land > 1.2 && t < 1.5) {
-  if ((angle > -80 && angle < -70) && (skelVelocity[1] > 0) && (mVisionProcessor->mVelocitySign == 1 && mVisionProcessor->mPercentage > 0.5 && mVisionProcessor->mPercentage < 0.8)) {
+  if (mVisionProcessor->isPrimePosition() && (angle > -80 && angle < -70) && (skelVelocity[1] > 0)) {
     mState = "RELEASE";
     std::cout << mCurrentFrame << ": " << "SWING -> RELEASE" << std::endl;
   }
@@ -809,4 +809,37 @@ int Controller::Vision::positionAtTime(int time) {
   }
 
   return position;
+}
+
+bool Controller::Vision::isPrimePosition() {    
+  double lowerPercent = 50;
+  double higherPercent = 80;
+  double shift = (mPixelsPerSecond - 45.0) / 45;
+  lowerPercent -= shift * 30;
+  higherPercent -= shift * 30;
+
+  lowerPercent /= 100;
+  higherPercent /= 100;
+  
+  std::cout << "Platform: " 
+    << floor(mPercentage*100) 
+    << " (range: [" 
+    << floor(lowerPercent*100)
+    << ", " 
+    << floor(higherPercent*100)
+    << "])"
+    << std::endl;
+
+  if (lowerPercent > 0 && higherPercent > 0) {
+    return mVelocitySign == 1 && mPercentage > lowerPercent && mPercentage < higherPercent;
+  }
+  else if (lowerPercent < 0 && higherPercent < 0) {
+    return mVelocitySign == -1 && mPercentage > -higherPercent && mPercentage < -lowerPercent;
+  }
+  else {
+    return (
+      (mVelocitySign == 1 && mPercentage > 0 && mPercentage < higherPercent) ||
+      (mVelocitySign == -1 && mPercentage > 0 && mPercentage < -lowerPercent)
+    );
+  }
 }
