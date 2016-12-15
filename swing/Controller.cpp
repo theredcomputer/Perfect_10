@@ -457,7 +457,7 @@ void Controller::swing() {
   // TODO: Figure out the condition to release the bar
   // if (mVisionProcessor->mVelocitySign == 1 && (forward > 110 && forward < 120) && (x_land > 0.7 && x_land < 0.8)) {
   // if (x_land > 1.2 && t < 1.5) {
-  if ((angle > -80 && angle < -70) && (skelVelocity[1] > 0) && (mVisionProcessor->mVelocitySign == 1 && mVisionProcessor->mPercentage > 0.7)) {
+  if ((angle > -80 && angle < -70) && (skelVelocity[1] > 0) && (mVisionProcessor->mVelocitySign == 1 && mVisionProcessor->mPercentage > 0.5 && mVisionProcessor->mPercentage < 0.8)) {
     mState = "RELEASE";
     std::cout << mCurrentFrame << ": " << "SWING -> RELEASE" << std::endl;
   }
@@ -468,9 +468,13 @@ void Controller::release() {
   rightHandRelease();
 
   mDesiredDofs = mDefaultPose;
-  mDesiredDofs[mSkel->getDof("j_abdomen_2")->getIndexInSkeleton()] = -1.5;
-  mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = -1.5;
-  mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = -1.5;
+  mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = 2.5;
+  mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = 2.5;
+  mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = -2.5;
+  mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = -2.5;
+  //mDesiredDofs[mSkel->getDof("j_abdomen_2")->getIndexInSkeleton()] = -1.5;
+  //mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = -1.5;
+  //mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = -1.5;
   stablePD();
 }
   
