@@ -131,6 +131,7 @@ private:
         , mHighestRow(0)
         , mPixelsPerFrame(0) 
         , mLastPositions(100)
+        , mLastSpeeds(100)
         , mCloserBoundary(-1)
         , mFurtherBoundary(-1)
       {
@@ -144,11 +145,13 @@ private:
       int mHighestRow;
       double mPixelsPerFrame;
       double mPixelsPerSecond;
+      std::deque<double> mLastSpeeds;
       int mVelocitySign;
       std::deque<int> mLastPositions;
 
       int mCloserBoundary;
       int mFurtherBoundary;
+      double mPercentage;
 
       int mWidth;
       int mHeight;

@@ -426,28 +426,38 @@ void Controller::swing() {
   stablePD();
   */
   
-  double x_land, t;
-  computeLandingData(&x_land, &t);
-  if (x_land > xLandMax && t < 2) {
-    xLandMax = x_land;
-    std::cout << mCounter << " xLandMax: " << xLandMax << " t: " << t << std::endl;
-  }
-  //std::cout << "mSwingState: " << mSwingState << std::endl;
-  std::cout << "x_land: " << x_land << " t: " << t << std::endl;
-  //std::cout << "pelvis_pos: " << mSkel->getBodyNode("h_pelvis")->getCOM()[0] << std::endl;  
-  //std::cout << "mMinX: " << mMinX << " mMaxX: " << mMaxX << " mSwingState: " << mSwingState << std::endl;
+  // double x_land, t;
+  // computeLandingData(&x_land, &t);
+  // if (x_land > xLandMax && t < 2) {
+  //   xLandMax = x_land;
+  //   std::cout << mCounter << " xLandMax: " << xLandMax << " t: " << t << std::endl;
+  // }
+  // //std::cout << "mSwingState: " << mSwingState << std::endl;
+  // std::cout << "x_land: " << x_land << " t: " << t << std::endl;
+  // //std::cout << "pelvis_pos: " << mSkel->getBodyNode("h_pelvis")->getCOM()[0] << std::endl;  
+  // //std::cout << "mMinX: " << mMinX << " mMaxX: " << mMaxX << " mSwingState: " << mSwingState << std::endl;
 
-  double LA_x = mSkel->getCOMLinearAcceleration()[0];
-  double LA_y = mSkel->getCOMLinearAcceleration()[1];
-  double LA = sqrt(pow(LA_x,2) + pow(LA_y,2)); 
-  //std::cout << LA_y << " " << LA_x << " LA: " << LA << std::endl; 
+  // double LA_x = mSkel->getCOMLinearAcceleration()[0];
+  // double LA_y = mSkel->getCOMLinearAcceleration()[1];
+  // double LA = sqrt(pow(LA_x,2) + pow(LA_y,2)); 
+  // //std::cout << LA_y << " " << LA_x << " LA: " << LA << std::endl; 
 
-  int forward = mVisionProcessor->positionAtTime(t);
-  std::cout << "platform at t: " << forward << std::endl;
+  // int forward = mVisionProcessor->positionAtTime(t);
+  // std::cout << "platform at t: " << forward << std::endl;
+
+  dart::dynamics::BodyNode* hand = mSkel->getBodyNode("h_hand_right");
+  dart::dynamics::BodyNode* ab = mSkel->getBodyNode("h_abdomen");
+  Eigen::Vector3d handPos = hand->getCOM();
+  Eigen::Vector3d abPos = ab->getCOM();
+  double angle = atan2(abPos[1] - handPos[1], abPos[0] - handPos[0]) * 180 / 3.14159;
+  std::cout << "angle: " << angle << std::endl;
+
+  Eigen::Vector3d skelVelocity = mSkel->getCOMLinearVelocity();
 
   // TODO: Figure out the condition to release the bar
   // if (mVisionProcessor->mVelocitySign == 1 && (forward > 110 && forward < 120) && (x_land > 0.7 && x_land < 0.8)) {
-  if (false) {
+  // if (x_land > 1.2 && t < 1.5) {
+  if ((angle > -80 && angle < -70) && skelVelocity[1] > 0) {
     mState = "RELEASE";
     std::cout << mCurrentFrame << ": " << "SWING -> RELEASE" << std::endl;
   }
@@ -671,7 +681,7 @@ void Controller::computeLandingData(double* x_land, double* t) {
   v_com = mSkel->getCOMLinearVelocity();
   v = sqrt(pow(v_com[0],2) + pow(v_com[1],2));
   theta = atan(v_com[1] / v_com[0]);
-  //std::cout << "theta: " << theta << std::endl;
+  std::cout << "v: " << v << " - theta: " << (theta*180/3.141592876) << std::endl;
   g = mSkel->getGravity()[1];
   d = (v * cos(theta) / g ) * (v * sin(theta) + sqrt(pow(v * sin(theta), 2) + 2 * g * y_0));
   *x_land = mSkel->getCOM()[0] + d;
@@ -750,8 +760,21 @@ void Controller::Vision::processImage(std::vector<unsigned char>* input) {
   mPixelsPerSecond = mPixelsPerFrame * 1000;
   mVelocitySign = (mLastPositions[99] - mLastPositions[98]) < 0 ? -1 : 1;
 
+  // Add the position to the queue
+  if (mLastSpeeds.size() == 1000) {
+    mLastSpeeds.pop_front();
+  }
+  mLastSpeeds.push_back(mPixelsPerSecond);
+
+  double speedAverages = 0;
+  for (int i = 0; i < mLastSpeeds.size(); i++) {
+    speedAverages += mLastSpeeds[i];
+  }
+  speedAverages /= mLastSpeeds.size();
+
   // std::cout << "Platform speed (pixels per frame): " << mPixelsPerFrame << std::endl;
   // std::cout << "Platform speed (pixels per second): " << mPixelsPerSecond << std::endl;
+  // std::cout << "Average platform speed (pixels per second): " << speedAverages << std::endl;
   // std::cout << "Position: " << mHighestRow << std::endl;
   // std::cout << "Closest boundary: " << mCloserBoundary << std::endl;
   // std::cout << "Furthest boundary: " << mFurtherBoundary << std::endl;
