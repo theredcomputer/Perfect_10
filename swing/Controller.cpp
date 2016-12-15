@@ -253,7 +253,7 @@ void Controller::crouch() {
 
   if (mSkel->getBodyNode("h_heel_left")->getCOM()[1] < lowestHeelPosition) {
     lowestHeelPosition = mSkel->getBodyNode("h_heel_left")->getCOM()[1];
-    std::cout << "Lowest heel position: " << lowestHeelPosition << std::endl;
+    //std::cout << "Lowest heel position: " << lowestHeelPosition << std::endl;
   }
 
   // Change to crouching pose
@@ -450,7 +450,7 @@ void Controller::swing() {
   Eigen::Vector3d handPos = hand->getCOM();
   Eigen::Vector3d abPos = ab->getCOM();
   double angle = atan2(abPos[1] - handPos[1], abPos[0] - handPos[0]) * 180 / 3.14159;
-  std::cout << "angle: " << angle << std::endl;
+  //std::cout << "angle: " << angle << std::endl;
 
   Eigen::Vector3d skelVelocity = mSkel->getCOMLinearVelocity();
 
@@ -821,7 +821,7 @@ bool Controller::Vision::isPrimePosition() {
   lowerPercent /= 100;
   higherPercent /= 100;
   
-  std::cout << "Platform: " 
+  /*std::cout << "Platform: " 
     << floor(mPercentage*100) 
     << " (range: [" 
     << floor(lowerPercent*100)
@@ -829,7 +829,7 @@ bool Controller::Vision::isPrimePosition() {
     << floor(higherPercent*100)
     << "])"
     << std::endl;
-
+  */
   if (lowerPercent > 0 && higherPercent > 0) {
     return mVelocitySign == 1 && mPercentage > lowerPercent && mPercentage < higherPercent;
   }
